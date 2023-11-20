@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"sync"
 )
@@ -43,9 +44,8 @@ func (this *Server) BroadCast(user *User, msg string) {
 
 func (this *Server) Handler(conn net.Conn) {
 	// 链接当前业务
-	// fmt.Println("链接建立成功")
-
 	user := NewUser(conn)
+
 	// 用户上线，将用户加入到onlinemap中，广播当前用户消息
 	this.mapLock.Lock() //多线程同时操作公共区域（全局变量）要加锁
 	this.OnlineMap[user.Name] = user
@@ -53,8 +53,28 @@ func (this *Server) Handler(conn net.Conn) {
 
 	this.BroadCast(user, "已上线")
 
+	// 接收客户端发送的消息
+	go func() {
+		buf := make([]byte, 4096)
+		for {
+			n, err := conn.Read(buf)
+			if n == 0 {
+				this.BroadCast(user, "下线")
+				return
+			}
+
+			if err != nil && err != io.EOF {
+				fmt.Println("conn read err:", err)
+				return
+			}
+
+			msg := string(buf[:n-1])
+			this.BroadCast(user, msg)
+		}
+	}()
+
 	// 当前handle goroutine阻塞
-	select {} //不阻塞这里user就没有了，map中存的是user指针，值也会没有
+	select {}
 }
 
 func (this *Server) Start() {
