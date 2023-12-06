@@ -55,8 +55,6 @@ func (this *User) SendMsg(msg string) {
 	this.conn.Write([]byte(msg))
 }
 
-// 修改用户名
-
 // 处理用户消息
 func (this *User) DoMessage(msg string) {
 	if msg == "who" {
